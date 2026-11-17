@@ -1,0 +1,56 @@
+{
+  "id": "/",
+  "name": "Rodando UTP GreenShare",
+  "short_name": "Rodando UTP",
+  "description": "PWA unificada para compartir viajes universitarios con recomendaciones reales, seguimiento en vivo, EcoPuntos y Rodando Parking.",
+  "lang": "es-MX",
+  "dir": "ltr",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
+  "orientation": "portrait-primary",
+  "background_color": "#f6fbf6",
+  "theme_color": "#1e7b46",
+  "categories": ["travel", "education", "productivity"],
+  "icons": [
+    {
+      "src": "/img/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/img/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Buscar viaje",
+      "short_name": "Buscar",
+      "description": "Encuentra rutas compatibles hacia la UTP o de regreso.",
+      "url": "/#viajes"
+    },
+    {
+      "name": "Seguimiento en vivo",
+      "short_name": "En vivo",
+      "description": "Consulta un recorrido activo si eres participante autorizado.",
+      "url": "/#seguimiento"
+    },
+    {
+      "name": "Rodando Parking",
+      "short_name": "Parking",
+      "description": "Consulta y genera tu pase de estacionamiento colaborativo.",
+      "url": "/#parking"
+    },
+    {
+      "name": "Mi mundo EcoRodando",
+      "short_name": "EcoRodando",
+      "description": "Revisa tu nivel y tus EcoPuntos.",
+      "url": "/#ecorodando"
+    }
+  ]
+}
