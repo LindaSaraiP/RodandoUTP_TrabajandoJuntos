@@ -143,6 +143,18 @@ CREATE TABLE IF NOT EXISTS live_trips (
 CREATE INDEX IF NOT EXISTS idx_live_trips_active ON live_trips(status, updated_at)
   WHERE status <> 'finalizado';
 
+-- Dispositivos GPS autorizados por el conductor. Solo se guarda el SHA-256 del token.
+CREATE TABLE IF NOT EXISTS live_devices (
+  id BIGSERIAL PRIMARY KEY,
+  ride_id BIGINT NOT NULL REFERENCES rides(id) ON DELETE CASCADE,
+  token_hash TEXT UNIQUE NOT NULL,
+  label VARCHAR(60) NOT NULL DEFAULT 'Dispositivo IoT',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  last_seen_at TIMESTAMPTZ,
+  revoked_at TIMESTAMPTZ
+);
+CREATE INDEX IF NOT EXISTS idx_live_devices_ride ON live_devices(ride_id, revoked_at);
+
 -- Solicitudes realizadas cuando el conductor ya está en camino. Aceptarlas
 -- crea/reactiva una reservación real dentro de la misma transacción.
 CREATE TABLE IF NOT EXISTS live_seat_requests (

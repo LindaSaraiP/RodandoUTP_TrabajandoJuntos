@@ -41,6 +41,9 @@
 .live-proximity.red .live-dot { background: var(--live-red); box-shadow: 0 0 0 5px rgba(207,59,53,.16); }
 .live-state-badge[data-live="connected"] { color: #1e7b46; background: #e4f5e7; }
 .live-driver-controls .actions-row { display: flex; gap: 8px; flex-wrap: wrap; margin: 14px 0; }
+.live-device-panel { display: grid; gap: 8px; margin: 12px 0; padding: 12px; border: 1px solid #cee3d2; border-radius: 14px; background: #f7fbf7; }
+.live-device-panel code { display: block; overflow-wrap: anywhere; color: #163d27; font-size: .76rem; }
+.live-device-command { padding: 9px; border-radius: 10px; background: #eaf5eb; }
 .live-requests { display: grid; gap: 9px; margin-top: 14px; }
 .live-request-item { border: 1px solid #d8e8da; background: #f7fbf7; border-radius: 14px; padding: 12px; }
 .live-request-item header { display: flex; justify-content: space-between; gap: 12px; }

@@ -8,6 +8,8 @@
     map: $('#liveMap'), legend: $('#liveMapLegend'), proximity: $('#liveProximity'), privacy: $('#livePrivacy'), status: $('#liveTripStatus'),
     title: $('#liveTripTitle'), meta: $('#liveTripMeta'), eta: $('#liveEta'), distance: $('#liveDistance'), seats: $('#liveSeats'),
     driver: $('#liveDriverControls'), start: $('#liveStart'), collecting: $('#liveCollecting'), onRoute: $('#liveOnRoute'), finish: $('#liveFinish'),
+    deviceButton: $('#liveDeviceButton'), devicePanel: $('#liveDevicePanel'), deviceToken: $('#liveDeviceToken'),
+    deviceCommand: $('#liveDeviceCommand'), deviceRevoke: $('#liveDeviceRevoke'),
     gps: $('#liveGpsStatus'), requests: $('#liveRequests'), requestCard: $('#liveSeatRequest'), requestForm: $('#liveRequestForm')
   };
   if (!els.section || !shared) return;
@@ -15,7 +17,7 @@
   const state = {
     user: null, csrf: '', rideId: null, current: null, map: null, vehicle: null, pickup: null, destination: null,
     route: null, proximityLine: null, proximityCircle: null,
-    socket: null, poll: null, watchId: null, lastSentAt: 0
+    socket: null, poll: null, watchId: null, lastSentAt: 0, deviceId: null
   };
 
   const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
@@ -183,6 +185,7 @@
       els.gps.textContent = 'GPS detenido al cambiar de viaje.';
     }
     state.rideId = nextRideId;
+    hideDevicePanel();
     if (!els.select.querySelector(`option[value="${state.rideId}"]`)) {
       const option = document.createElement('option'); option.value = state.rideId; option.textContent = `Viaje ${state.rideId}`; els.select.append(option);
     }
@@ -253,12 +256,39 @@
     catch (error) { els.gps.textContent = error.message; }
   }
 
+  function hideDevicePanel() {
+    state.deviceId = null;
+    els.devicePanel.hidden = true;
+    els.deviceToken.textContent = '';
+    els.deviceCommand.textContent = '';
+  }
+
+  async function connectDevice() {
+    try {
+      const data = await api(`/api/live/rides/${state.rideId}/device`, { method: 'POST', body: { label: 'Dispositivo IoT' } });
+      state.deviceId = data.device.id;
+      els.deviceToken.textContent = data.token;
+      els.deviceCommand.textContent = `node scripts/simular-dispositivo-iot.js ${location.origin}/api/live/iot/location ${data.token} 19.0583869,-98.1545312 19.0640000,-98.1700000`;
+      els.devicePanel.hidden = false;
+      els.gps.textContent = 'Dispositivo registrado. El token solo aparece una vez.';
+    } catch (error) { els.gps.textContent = error.message; }
+  }
+
+  async function revokeDevice() {
+    try {
+      await api(`/api/live/rides/${state.rideId}/device`, { method: 'DELETE', body: { deviceId: state.deviceId } });
+      hideDevicePanel();
+      els.gps.textContent = 'Dispositivo revocado.';
+    } catch (error) { els.gps.textContent = error.message; }
+  }
+
   async function finish() {
     if (!confirm('¿Finalizar el viaje? Se detendrá la ubicación y se calcularán los EcoPuntos.')) return;
     try {
       await api(`/api/live/rides/${state.rideId}/finish`, { method: 'POST', body: {} });
       if (state.watchId != null) navigator.geolocation.clearWatch(state.watchId);
       state.watchId = null;
+      hideDevicePanel();
       await refresh(); await loadOptions();
     } catch (error) { els.gps.textContent = error.message; }
   }
@@ -291,6 +321,8 @@
   els.collecting.addEventListener('click', () => changeState('recogiendo'));
   els.onRoute.addEventListener('click', () => changeState('en_ruta'));
   els.finish.addEventListener('click', finish);
+  els.deviceButton.addEventListener('click', connectDevice);
+  els.deviceRevoke.addEventListener('click', revokeDevice);
   els.requestForm.addEventListener('submit', async event => {
     event.preventDefault();
     const form = new FormData(els.requestForm);
@@ -316,7 +348,7 @@
       state.watchId = null;
     }
     state.user = nextUser; state.csrf = detail?.csrfToken || '';
-    closeSocket(); clearInterval(state.poll);
+    closeSocket(); clearInterval(state.poll); hideDevicePanel();
     if (!state.user) {
       els.select.innerHTML = '<option value="">Inicia sesión para ver tus viajes</option>';
       setConnection('Sesión requerida');

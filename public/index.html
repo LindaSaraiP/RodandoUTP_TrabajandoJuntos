@@ -270,6 +270,13 @@
               <button class="pill-btn outline mini" type="button" id="liveCollecting">Recogiendo</button>
               <button class="pill-btn outline mini" type="button" id="liveOnRoute">En ruta</button>
               <button class="pill-btn solid mini" type="button" id="liveFinish">Finalizar viaje</button>
+              <button class="pill-btn outline mini" type="button" id="liveDeviceButton">Conectar dispositivo IoT</button>
+            </div>
+            <div class="live-device-panel" id="liveDevicePanel" hidden>
+              <p class="helper small">Token único del dispositivo: <code id="liveDeviceToken"></code>. No se vuelve a mostrar.</p>
+              <p class="helper small">Demostración sin hardware, desde la raíz del proyecto:</p>
+              <code class="live-device-command" id="liveDeviceCommand"></code>
+              <button class="pill-btn outline mini" type="button" id="liveDeviceRevoke">Revocar dispositivo</button>
             </div>
             <p class="helper small" id="liveGpsStatus">El navegador pedirá permiso de geolocalización.</p>
             <div id="liveRequests" class="live-requests"></div>
