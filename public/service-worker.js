@@ -7,6 +7,7 @@ const APP_SHELL = [
   '/css/live.css?v=7.0.0',
   '/css/assistant.css?v=7.0.0',
   '/js/app.js?v=7.0.0',
+  '/js/live-map.js?v=7.0.0',
   '/js/live.js?v=7.0.0',
   '/js/assistant.js?v=7.0.0',
   '/js/notifications.js?v=7.0.0',

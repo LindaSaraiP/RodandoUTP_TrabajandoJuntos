@@ -2,17 +2,19 @@
 
 (() => {
   const $ = selector => document.querySelector(selector);
+  const shared = window.RodandoLiveMap;
   const els = {
     section: $('#seguimiento'), select: $('#liveRideSelect'), refresh: $('#liveRefresh'), connection: $('#liveConnectionState'),
-    map: $('#liveMap'), proximity: $('#liveProximity'), privacy: $('#livePrivacy'), status: $('#liveTripStatus'),
+    map: $('#liveMap'), legend: $('#liveMapLegend'), proximity: $('#liveProximity'), privacy: $('#livePrivacy'), status: $('#liveTripStatus'),
     title: $('#liveTripTitle'), meta: $('#liveTripMeta'), eta: $('#liveEta'), distance: $('#liveDistance'), seats: $('#liveSeats'),
     driver: $('#liveDriverControls'), start: $('#liveStart'), collecting: $('#liveCollecting'), onRoute: $('#liveOnRoute'), finish: $('#liveFinish'),
     gps: $('#liveGpsStatus'), requests: $('#liveRequests'), requestCard: $('#liveSeatRequest'), requestForm: $('#liveRequestForm')
   };
-  if (!els.section) return;
+  if (!els.section || !shared) return;
 
   const state = {
     user: null, csrf: '', rideId: null, current: null, map: null, vehicle: null, pickup: null, destination: null,
+    route: null, proximityLine: null, proximityCircle: null,
     socket: null, poll: null, watchId: null, lastSentAt: 0
   };
 
@@ -45,11 +47,32 @@
     return state.map;
   }
 
-  function markerFor(kind, coords, label) {
+  function renderLegend() {
+    els.legend.innerHTML = '';
+    shared.PROXIMITY_LEGEND.forEach(item => {
+      const entry = document.createElement('li');
+      entry.className = item.color;
+      const swatch = document.createElement('i');
+      swatch.setAttribute('aria-hidden', 'true');
+      const text = document.createElement('span');
+      text.textContent = item.label;
+      entry.append(swatch, text);
+      els.legend.append(entry);
+    });
+  }
+
+  function proximityColor(data) {
+    const styles = getComputedStyle(els.section);
+    const variables = {};
+    Object.values(shared.COLOR_VARIABLES).forEach(name => { variables[name] = styles.getPropertyValue(name); });
+    return shared.resolveColor(data?.estimate?.proximity?.color, variables);
+  }
+
+  function markerFor(kind, coords, label, color) {
     if (!coords || coords.some(value => value == null)) return null;
     if (kind === 'vehicle') {
       return window.L.marker(coords, { icon: window.L.divIcon({
-        className: '', html: '<span class="live-vehicle-marker">●</span>', iconSize: [38, 38], iconAnchor: [19, 19]
+        className: '', html: `<span class="live-vehicle-marker" style="background:${color}">●</span>`, iconSize: [38, 38], iconAnchor: [19, 19]
       }) }).bindPopup(label);
     }
     return window.L.marker(coords).bindPopup(label);
@@ -59,22 +82,36 @@
     const map = ensureMap();
     if (!map) return;
     state.vehicle?.remove(); state.pickup?.remove(); state.destination?.remove();
-    const points = [];
-    if (data.ride.pickupLat != null) {
-      const coords = [data.ride.pickupLat, data.ride.pickupLng];
-      state.pickup = markerFor('pickup', coords, `Punto de encuentro: ${escapeHtml(data.ride.pickupPoint)}`)?.addTo(map);
-      points.push(coords);
+    state.route?.remove(); state.proximityLine?.remove(); state.proximityCircle?.remove();
+    const color = proximityColor(data);
+    const route = shared.routePoints(data);
+    const points = [...route];
+    if (route.length > 1) {
+      state.route = window.L.polyline(route, { color: '#1e7b46', weight: 4, opacity: .7, dashArray: '8 8' }).addTo(map);
     }
-    if (data.ride.destinationLat != null) {
+    let pickupCoords = null;
+    if (data.ride.pickupLat != null && data.ride.pickupLng != null) {
+      pickupCoords = [data.ride.pickupLat, data.ride.pickupLng];
+      state.pickup = markerFor('pickup', pickupCoords, `Punto de encuentro: ${escapeHtml(data.ride.pickupPoint)}`)?.addTo(map);
+    }
+    if (data.ride.destinationLat != null && data.ride.destinationLng != null) {
       const coords = [data.ride.destinationLat, data.ride.destinationLng];
       state.destination = markerFor('destination', coords, escapeHtml(data.ride.destination))?.addTo(map);
-      points.push(coords);
     }
     if (data.position) {
       const coords = [data.position.lat, data.position.lng];
-      state.vehicle = markerFor('vehicle', coords, `Automóvil · ${escapeHtml(data.estimate.proximity.label)}`)?.addTo(map);
+      const label = `Automóvil · ${escapeHtml(data.estimate?.proximity?.label || 'Sin estimación')}`;
+      state.vehicle = markerFor('vehicle', coords, label, color)?.addTo(map);
       points.push(coords);
+      if (pickupCoords) {
+        state.proximityLine = window.L.polyline([coords, pickupCoords], { color, weight: 5, opacity: .9 }).addTo(map);
+        const radius = Math.max(150, Math.min(1200, Number(data.estimate?.distanceKm || 0) * 1000));
+        state.proximityCircle = window.L.circle(pickupCoords, {
+          radius, color, fillColor: color, fillOpacity: .12, weight: 2
+        }).addTo(map);
+      }
     }
+    els.map.setAttribute('aria-label', `Mapa de seguimiento. Cercanía: ${data.estimate?.proximity?.label || 'sin estimación'}. ${escapeHtml(data.ride.pickupPoint || '')}`);
     if (points.length > 1) map.fitBounds(points, { padding: [35, 35], maxZoom: 16 });
     else if (points.length === 1) map.setView(points[0], 15);
     else map.setView([19.0583869, -98.1545312], 12);
@@ -264,6 +301,7 @@
       els.requestCard.innerHTML = '<h3>Solicitud enviada</h3><p class="helper">Espera la respuesta del conductor. La ubicación aparecerá solo si acepta.</p>';
     } catch (error) { els.requestCard.querySelector('.helper').textContent = error.message; }
   });
+  renderLegend();
   document.addEventListener('rodando:live:open', event => openRide(event.detail?.rideId));
   window.addEventListener('beforeunload', () => {
     if (state.watchId != null) navigator.geolocation.clearWatch(state.watchId);

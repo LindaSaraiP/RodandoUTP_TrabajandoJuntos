@@ -1,4 +1,11 @@
-.live-section { scroll-margin-top: 92px; }
+.live-section {
+  --live-green: #2e9b58;
+  --live-yellow: #dfb827;
+  --live-orange: #e47b26;
+  --live-red: #cf3b35;
+  --live-gray: #8c9b90;
+  scroll-margin-top: 92px;
+}
 .live-layout { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(300px, .75fr); gap: 22px; align-items: start; }
 .live-map-card { padding: 18px; overflow: hidden; }
 .live-toolbar { display: flex; gap: 12px; align-items: end; margin-bottom: 14px; }
@@ -8,6 +15,13 @@
   width: 100%; min-height: 44px; border: 1px solid #cee3d2; border-radius: 13px; background: #fff; color: #163d27; padding: 0 12px;
 }
 .live-map { min-height: 430px; border-radius: 22px; border: 1px solid #d9eadb; background: #edf7ee; overflow: hidden; z-index: 0; }
+.live-map-legend { display: flex; flex-wrap: wrap; gap: 8px 16px; margin: 11px 0 0; padding: 0; list-style: none; color: #5d7563; font-size: .74rem; }
+.live-map-legend li { display: flex; align-items: center; gap: 6px; }
+.live-map-legend i { width: 10px; height: 10px; flex: 0 0 10px; border-radius: 50%; background: var(--live-gray); }
+.live-map-legend .green i { background: var(--live-green); }
+.live-map-legend .yellow i { background: var(--live-yellow); }
+.live-map-legend .orange i { background: var(--live-orange); }
+.live-map-legend .red i { background: var(--live-red); }
 .live-side { display: grid; gap: 16px; }
 .live-summary, .live-driver-controls, .live-seat-request { padding: 20px; }
 .live-summary h3 { margin: 12px 0 6px; }
@@ -20,11 +34,11 @@
 .live-proximity { display: flex; gap: 11px; align-items: center; margin-top: 14px; padding: 12px 14px; border-radius: 16px; background: #f2f6f3; border: 1px solid #dce6de; }
 .live-proximity strong, .live-proximity small { display: block; }
 .live-proximity small { color: #5d7563; }
-.live-dot { width: 15px; height: 15px; flex: 0 0 15px; border-radius: 50%; background: #8c9b90; box-shadow: 0 0 0 5px rgba(140,155,144,.15); }
-.live-proximity.green .live-dot { background: #2e9b58; box-shadow: 0 0 0 5px rgba(46,155,88,.15); }
-.live-proximity.yellow .live-dot { background: #dfb827; box-shadow: 0 0 0 5px rgba(223,184,39,.18); }
-.live-proximity.orange .live-dot { background: #e47b26; box-shadow: 0 0 0 5px rgba(228,123,38,.16); }
-.live-proximity.red .live-dot { background: #cf3b35; box-shadow: 0 0 0 5px rgba(207,59,53,.16); }
+.live-dot { width: 15px; height: 15px; flex: 0 0 15px; border-radius: 50%; background: var(--live-gray); box-shadow: 0 0 0 5px rgba(140,155,144,.15); }
+.live-proximity.green .live-dot { background: var(--live-green); box-shadow: 0 0 0 5px rgba(46,155,88,.15); }
+.live-proximity.yellow .live-dot { background: var(--live-yellow); box-shadow: 0 0 0 5px rgba(223,184,39,.18); }
+.live-proximity.orange .live-dot { background: var(--live-orange); box-shadow: 0 0 0 5px rgba(228,123,38,.16); }
+.live-proximity.red .live-dot { background: var(--live-red); box-shadow: 0 0 0 5px rgba(207,59,53,.16); }
 .live-state-badge[data-live="connected"] { color: #1e7b46; background: #e4f5e7; }
 .live-driver-controls .actions-row { display: flex; gap: 8px; flex-wrap: wrap; margin: 14px 0; }
 .live-requests { display: grid; gap: 9px; margin-top: 14px; }
