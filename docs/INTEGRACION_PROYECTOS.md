@@ -21,7 +21,9 @@ RodandoUTP GreenShare 7.0 es una sola PWA. GreenShare aporta la interfaz y el mo
 | Motor de sugerencias | `Villegas0117/RodandoUTP` | “IA simulada”: grafo/reglas y datos de demostración | Portado conceptualmente a Node.js; ahora puntúa viajes reales de PostgreSQL |
 | Chat flotante | Villegas0117 | No era un chat integrado a GreenShare | Creado como componente flotante GreenShare |
 | PostgreSQL/Neon | Los tres | Modelos y autenticaciones incompatibles | Se conserva un solo esquema GreenShare y se agregan tres tablas en vivo |
-| PWA/offline | Los tres | Service Workers distintos | Se conserva un único Service Worker 7.0 sin caché privada |
+| PWA/offline | Los tres | Service Workers distintos | Se conserva un único Service Worker 7.0; la sola excepción es una caché local de la última posición, sin `/api` |
+| Rastreadores IoT | Nuevo | No existía | Token por viaje, `Authorization: Device <token>`, hash SHA-256 y simulador sin hardware |
+| Aviso "ya te espero" | Propuesta original | No existía | Aviso deduplicado en `live_arrival_notices` y notificación al conductor |
 
 ## Decisiones principales
 
@@ -55,8 +57,9 @@ Groq es opcional y solo interpreta texto. Hugging Face Inference Providers no of
 - Solo se conserva una fila por `ride_id` en `live_trips`.
 - No existe tabla de historial de posiciones.
 - Lecturas de más de 90 segundos se consideran caducadas.
-- Finalizar o cancelar pone el seguimiento en `finalizado` y borra coordenadas.
-- `/api/` está fuera del Cache API.
+- Finalizar o cancelar pone el seguimiento en `finalizado`, borra coordenadas y revoca dispositivos IoT.
+- `/api/` está fuera del Cache API y el Service Worker no guarda respuestas autenticadas.
+- Excepción documentada: la PWA guarda en `rodando-live-v1` solo la última lectura del propio dispositivo (`rideId`, `lat`, `lng`, `etaMinutes`, `proximity`, `updatedAt`) para mostrarla sin red con el aviso "Dato sin actualizar · última señal hace X". No se envía al servidor ni se comparte; se borra al finalizar el viaje, al cerrar sesión y al perder el permiso.
 
 ## Flujo entre módulos
 
@@ -74,6 +77,9 @@ Parking ──genera──> parking_passes asociado al viaje y participantes
 
 - `lib/recommendations.js`
 - `lib/live-tracking.js`
+- `lib/live-iot.js`
+- `public/js/live-map.js`
+- `scripts/simular-dispositivo-iot.js`
 - `public/js/assistant.js`
 - `public/js/live.js`
 - `public/css/assistant.css`
@@ -82,6 +88,8 @@ Parking ──genera──> parking_passes asociado al viaje y participantes
 - `public/service-worker.js`
 - `public/manifest.webmanifest`
 - `docs/migrations/007-unified-live-tracking.sql`
+- `docs/migrations/008-live-iot-devices.sql`
+- `docs/migrations/009-live-arrival-notices.sql`
 - `tests/*.test.js`
 - `scripts/test-v7.js`
 

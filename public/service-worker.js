@@ -1,5 +1,6 @@
 const VERSION = '7.0.0';
 const CACHE = `rodando-utp-greenshare-v${VERSION}`;
+const LIVE_CACHE = 'rodando-live-v1';
 const APP_SHELL = [
   '/',
   '/index.html',
@@ -35,7 +36,7 @@ self.addEventListener('install', event => {
 self.addEventListener('activate', event => {
   event.waitUntil(
     caches.keys()
-      .then(keys => Promise.all(keys.filter(key => key !== CACHE).map(key => caches.delete(key))))
+      .then(keys => Promise.all(keys.filter(key => key !== CACHE && key !== LIVE_CACHE).map(key => caches.delete(key))))
       .then(() => self.clients.claim())
   );
 });

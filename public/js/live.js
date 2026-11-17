@@ -3,6 +3,7 @@
 (() => {
   const $ = selector => document.querySelector(selector);
   const shared = window.RodandoLiveMap;
+  const OFFLINE_CACHE = 'rodando-live-v1';
   const els = {
     section: $('#seguimiento'), select: $('#liveRideSelect'), refresh: $('#liveRefresh'), connection: $('#liveConnectionState'),
     map: $('#liveMap'), legend: $('#liveMapLegend'), proximity: $('#liveProximity'), privacy: $('#livePrivacy'), status: $('#liveTripStatus'),
@@ -39,6 +40,64 @@
   function setConnection(label, connected = false) {
     els.connection.textContent = label;
     els.connection.dataset.live = connected ? 'connected' : 'idle';
+  }
+
+  function offlineRequest() {
+    return new Request(`${location.origin}/live/ultima-posicion`);
+  }
+
+  async function saveOffline(data) {
+    if (!window.caches || !data.permissions?.canViewLocation || !data.live?.fresh || !data.position) return;
+    const record = {
+      rideId: data.ride.id,
+      lat: data.position.lat,
+      lng: data.position.lng,
+      etaMinutes: data.estimate?.etaMinutes ?? null,
+      proximity: data.estimate?.proximity?.color || 'gray',
+      updatedAt: data.position.updatedAt || data.live.updatedAt || new Date().toISOString()
+    };
+    const cache = await caches.open(OFFLINE_CACHE);
+    await cache.put(offlineRequest(), new Response(JSON.stringify(record), { headers: { 'Content-Type': 'application/json' } }));
+  }
+
+  async function readOffline() {
+    if (!window.caches) return null;
+    const cache = await caches.open(OFFLINE_CACHE);
+    const response = await cache.match(offlineRequest());
+    if (!response) return null;
+    try {
+      const value = await response.json();
+      if (!Number.isFinite(Number(value.rideId)) || !Number.isFinite(Number(value.lat)) || !Number.isFinite(Number(value.lng))) return null;
+      return {
+        rideId: Number(value.rideId), lat: Number(value.lat), lng: Number(value.lng),
+        etaMinutes: value.etaMinutes == null ? null : Number(value.etaMinutes),
+        proximity: shared.PROXIMITY_LEGEND.some(item => item.color === value.proximity) ? value.proximity : 'gray',
+        updatedAt: value.updatedAt
+      };
+    } catch { return null; }
+  }
+
+  async function clearOffline() {
+    if (window.caches) await caches.delete(OFFLINE_CACHE).catch(() => {});
+  }
+
+  async function showOfflinePosition() {
+    if (!state.rideId || !state.current) return;
+    const cached = await readOffline();
+    if (!cached || Number(cached.rideId) !== Number(state.rideId)) return;
+    const entry = shared.PROXIMITY_LEGEND.find(item => item.color === cached.proximity)
+      || { color: 'gray', label: 'Sin estimación' };
+    const when = shared.formatUltimaSenal(cached.updatedAt);
+    setConnection(`Dato sin actualizar · última señal ${when}`);
+    els.proximity.className = `live-proximity ${cached.proximity}`;
+    els.proximity.querySelector('strong').textContent = `${entry.label.split(':')[0]} · sin conexión`;
+    els.proximity.querySelector('small').textContent = `${entry.label}. Dato sin actualizar · última señal ${when}.`;
+    els.eta.textContent = cached.etaMinutes ?? '—';
+    updateMap({
+      ride: state.current.ride,
+      position: { lat: cached.lat, lng: cached.lng },
+      estimate: { distanceKm: null, etaMinutes: cached.etaMinutes, proximity: { color: cached.proximity, label: entry.label } }
+    });
   }
 
   function ensureMap() {
@@ -159,14 +218,22 @@
     if (els.requestCard.hidden === false) els.requestForm.elements.pickupLabel.value ||= data.ride.pickupPoint;
     updateMap(data);
     if (data.permissions.isDriver) loadRequests().catch(error => { els.requests.textContent = error.message; });
-    if (data.permissions.canViewLocation) connectSocket(); else closeSocket();
+    if (data.permissions.canViewLocation) connectSocket();
+    else { closeSocket(); clearOffline().catch(() => {}); }
     setConnection(data.live.fresh ? 'GPS actualizado' : data.live.sharing ? 'Esperando GPS' : 'Seguimiento inactivo', data.live.sharing);
+    if (navigator.onLine === false) showOfflinePosition().catch(() => {});
   }
 
   async function refresh() {
     if (!state.rideId || !state.user) return;
-    try { render(await api(`/api/live/rides/${state.rideId}`)); }
-    catch (error) { setConnection(error.message); }
+    try {
+      const data = await api(`/api/live/rides/${state.rideId}`);
+      render(data);
+      await saveOffline(data);
+    } catch (error) {
+      setConnection(error.message);
+      if (navigator.onLine === false) showOfflinePosition().catch(() => {});
+    }
   }
 
   function addOption(ride, label) {
@@ -197,6 +264,7 @@
     }
     state.rideId = nextRideId;
     hideDevicePanel();
+    clearOffline().catch(() => {});
     if (!els.select.querySelector(`option[value="${state.rideId}"]`)) {
       const option = document.createElement('option'); option.value = state.rideId; option.textContent = `Viaje ${state.rideId}`; els.select.append(option);
     }
@@ -225,7 +293,7 @@
     socket.onmessage = event => {
       try {
         const message = JSON.parse(event.data);
-        if (message.type === 'live-state') render(message.data);
+        if (message.type === 'live-state') { render(message.data); saveOffline(message.data).catch(() => {}); }
         else if (message.type === 'error') setConnection(message.message);
       } catch {}
     };
@@ -312,6 +380,7 @@
       if (state.watchId != null) navigator.geolocation.clearWatch(state.watchId);
       state.watchId = null;
       hideDevicePanel();
+      clearOffline().catch(() => {});
       await refresh(); await loadOptions();
     } catch (error) { els.gps.textContent = error.message; }
   }
@@ -363,17 +432,24 @@
     if (state.watchId != null) navigator.geolocation.clearWatch(state.watchId);
     closeSocket();
   });
-  window.addEventListener('offline', () => setConnection('Sin conexión · GPS pausado'));
+  window.addEventListener('offline', () => {
+    setConnection('Sin conexión · GPS pausado');
+    showOfflinePosition().catch(() => {});
+  });
+  window.addEventListener('online', () => refresh());
 
   async function setSession(detail) {
     const nextUser = detail?.user || null;
-    if (Number(state.user?.id || 0) !== Number(nextUser?.id || 0) && state.watchId != null) {
+    const userChanged = Number(state.user?.id || 0) !== Number(nextUser?.id || 0);
+    if (userChanged && state.watchId != null) {
       navigator.geolocation.clearWatch(state.watchId);
       state.watchId = null;
     }
     state.user = nextUser; state.csrf = detail?.csrfToken || '';
     closeSocket(); clearInterval(state.poll); hideDevicePanel();
+    if (state.user && userChanged) clearOffline().catch(() => {});
     if (!state.user) {
+      if (userChanged) clearOffline().catch(() => {});
       els.select.innerHTML = '<option value="">Inicia sesión para ver tus viajes</option>';
       els.arrived.hidden = true; els.arrivedStatus.hidden = true;
       setConnection('Sesión requerida');

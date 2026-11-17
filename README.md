@@ -13,8 +13,10 @@ PWA unificada para que estudiantes de la Universidad Tecnológica de Puebla publ
 - ETA aproximada y colores: verde `>10 min`, amarillo `≤10`, naranja `≤5`, rojo `≤2`.
 - Solicitudes de asiento durante el recorrido y aceptación transaccional.
 - Avisos internos/Web Push de inicio, solicitudes, aceptación y proximidad.
+- Ingesta de posiciones desde un rastreador GPS, ESP32 o el teléfono como sensor, con token por viaje.
+- Aviso "ya te espero" del pasajero confirmado al conductor.
 - Asistente flotante determinista y explicable; consulta cupo, horario y coordenadas reales.
-- Service Worker único: app shell offline, sin cachear `/api`, sesiones ni GPS.
+- Service Worker único: app shell offline, sin cachear `/api`, sesiones ni ubicación del servidor.
 
 ## Arquitectura
 
@@ -33,7 +35,7 @@ server.js (servidor HTTP Node.js)
 PostgreSQL / Neon
 ```
 
-Existe una sola autenticación, API, PWA y base de datos. El WebSocket reutiliza la cookie de sesión; no expone JWT en el navegador. Solo se guarda la última posición GPS y se elimina al finalizar o cancelar el viaje.
+Existe una sola autenticación, API, PWA y base de datos. El WebSocket reutiliza la cookie de sesión; no expone JWT en el navegador. Solo se guarda la última posición GPS en la base de datos y se elimina al finalizar o cancelar el viaje. Los dispositivos IoT usan `Authorization: Device <token>` sin cookie ni CSRF; de ellos solo se conserva el SHA-256 del token. La única excepción de caché es la última posición local descrita en Seguridad y privacidad.
 
 ## Requisitos
 
@@ -104,6 +106,12 @@ npm audit                 # dependencias
 
 Para integración, iniciar primero el servidor con una base de prueba que tenga los usuarios demo de `scripts/seed-demo.js`; luego ejecutar `npm run test:integration` en otra terminal.
 
+La ingesta IoT se puede demostrar sin hardware. En los controles del conductor, "Conectar dispositivo IoT" entrega el token y el comando exacto; la forma general es:
+
+```bash
+node scripts/simular-dispositivo-iot.js http://localhost:3000/api/live/iot/location <token> 19.0583869,-98.1545312 19.064,-98.17
+```
+
 ## Despliegue
 
 En Render u otro proveedor Node:
@@ -121,7 +129,9 @@ En Render u otro proveedor Node:
 - Reservas y aceptación en vivo bloquean la fila `rides` con `FOR UPDATE`.
 - GPS visible únicamente al conductor, administración y pasajeros confirmados.
 - Posiciones con más de 100 m de imprecisión se rechazan; una lectura caduca a los 90 s.
-- El Service Worker no intercepta `/api/`; no hay caché de ubicación ni datos autenticados.
+- El Service Worker no intercepta `/api/` y no guarda datos autenticados ni respuestas de ubicación.
+- Excepción de privacidad documentada: solo en el propio dispositivo, la PWA guarda en Cache Storage `rodando-live-v1` una única lectura `{rideId, lat, lng, etaMinutes, proximity, updatedAt}` para participantes autorizados. Esa caché no se envía al servidor ni se comparte; se borra al finalizar el viaje, al cerrar sesión y al perder el permiso. Sin red se muestra con el aviso "Dato sin actualizar · última señal hace X".
+- El token de un dispositivo IoT se muestra una sola vez; en PostgreSQL solo existe su SHA-256. Revocarlo o finalizar el viaje lo inutiliza de inmediato.
 - El QR público enmascara nombres, matrículas y placa; participantes autorizados ven el detalle.
 
 ## Documentación
