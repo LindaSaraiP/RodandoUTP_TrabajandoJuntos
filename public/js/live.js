@@ -7,6 +7,7 @@
     section: $('#seguimiento'), select: $('#liveRideSelect'), refresh: $('#liveRefresh'), connection: $('#liveConnectionState'),
     map: $('#liveMap'), legend: $('#liveMapLegend'), proximity: $('#liveProximity'), privacy: $('#livePrivacy'), status: $('#liveTripStatus'),
     title: $('#liveTripTitle'), meta: $('#liveTripMeta'), eta: $('#liveEta'), distance: $('#liveDistance'), seats: $('#liveSeats'),
+    arrived: $('#liveArrived'), arrivedStatus: $('#liveArrivedStatus'),
     driver: $('#liveDriverControls'), start: $('#liveStart'), collecting: $('#liveCollecting'), onRoute: $('#liveOnRoute'), finish: $('#liveFinish'),
     deviceButton: $('#liveDeviceButton'), devicePanel: $('#liveDevicePanel'), deviceToken: $('#liveDeviceToken'),
     deviceCommand: $('#liveDeviceCommand'), deviceRevoke: $('#liveDeviceRevoke'),
@@ -132,6 +133,16 @@
     els.eta.textContent = data.estimate.etaMinutes ?? '—';
     els.distance.textContent = data.estimate.distanceKm ?? '—';
     els.seats.textContent = data.ride.seatsAvailable;
+    els.arrived.hidden = !data.permissions.canMarkArrived;
+    els.arrivedStatus.hidden = !data.permissions.canMarkArrived;
+    if (data.permissions.canMarkArrived) {
+      const notified = Boolean(data.live.arrivedNotified);
+      els.arrived.disabled = notified;
+      els.arrived.textContent = notified ? 'Aviso enviado' : 'Ya te espero';
+      els.arrivedStatus.textContent = notified
+        ? 'El conductor ya recibió tu aviso.'
+        : 'Avisa al conductor cuando estés en el punto de encuentro.';
+    }
     const proximity = data.estimate.proximity || { color: 'unknown', label: 'Sin estimación' };
     els.proximity.className = `live-proximity ${proximity.color || 'unknown'}`;
     els.proximity.querySelector('strong').textContent = proximity.label;
@@ -282,6 +293,18 @@
     } catch (error) { els.gps.textContent = error.message; }
   }
 
+  async function markArrived() {
+    els.arrived.disabled = true;
+    try {
+      await api(`/api/live/rides/${state.rideId}/arrived`, { method: 'POST', body: {} });
+      els.arrivedStatus.textContent = 'El conductor ya recibió tu aviso.';
+      els.arrived.textContent = 'Aviso enviado';
+    } catch (error) {
+      els.arrivedStatus.textContent = error.message;
+      els.arrived.disabled = false;
+    }
+  }
+
   async function finish() {
     if (!confirm('¿Finalizar el viaje? Se detendrá la ubicación y se calcularán los EcoPuntos.')) return;
     try {
@@ -323,6 +346,7 @@
   els.finish.addEventListener('click', finish);
   els.deviceButton.addEventListener('click', connectDevice);
   els.deviceRevoke.addEventListener('click', revokeDevice);
+  els.arrived.addEventListener('click', markArrived);
   els.requestForm.addEventListener('submit', async event => {
     event.preventDefault();
     const form = new FormData(els.requestForm);
@@ -351,6 +375,7 @@
     closeSocket(); clearInterval(state.poll); hideDevicePanel();
     if (!state.user) {
       els.select.innerHTML = '<option value="">Inicia sesión para ver tus viajes</option>';
+      els.arrived.hidden = true; els.arrivedStatus.hidden = true;
       setConnection('Sesión requerida');
       return;
     }
