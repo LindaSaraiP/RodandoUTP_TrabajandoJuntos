@@ -363,7 +363,7 @@ async function cleanup() {
       assert.match(swText, /rodando-utp-greenshare-v\$\{VERSION\}/);
       assert.match(swText, /PRIVATE_PATH_PREFIXES = \['\/api\/', '\/auth\/'\]/);
       assert.match(swText, /\/vendor\/leaflet\/leaflet\.js/);
-      assert.match(swText, /\/js\/live\.js\?v=7\.0\.0/);
+      assert.match(swText, /\/js\/live\.js\?v=7\.1\.0/);
       assert.match(swText, /\/js\/assistant\.js\?v=7\.0\.0/);
       const manifest = await request(createClient(), '/manifest.webmanifest');
       assert.equal(manifest.res.status, 200);

@@ -36,7 +36,7 @@ test('la interfaz expone los controles nuevos y carga el módulo de mapa', () =>
   for (const id of ['liveMapLegend', 'liveDeviceButton', 'liveDevicePanel', 'liveArrived', 'liveArrivedStatus']) {
     assert.match(html, new RegExp(`id="${id}"`));
   }
-  assert.match(html, /\/js\/live-map\.js\?v=7\.0\.0/);
+  assert.match(html, /\/js\/live-map\.js\?v=7\.1\.0/);
 });
 
 test('el servidor mantiene la ingesta IoT fuera de la autenticación por cookie', () => {

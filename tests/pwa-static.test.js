@@ -19,7 +19,7 @@ test('manifest PWA válido y con acceso al seguimiento', () => {
 test('service worker precachea la app 7.0 y excluye toda API privada', () => {
   const sw = read('public/service-worker.js');
   assert.match(sw, /const VERSION = '7\.0\.0'/);
-  assert.match(sw, /\/js\/live\.js\?v=7\.0\.0/);
+  assert.match(sw, /\/js\/live\.js\?v=7\.1\.0/);
   assert.match(sw, /\/js\/assistant\.js\?v=7\.0\.0/);
   assert.match(sw, /PRIVATE_PATH_PREFIXES = \['\/api\/', '\/auth\/'\]/);
 });
